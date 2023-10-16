@@ -1,15 +1,17 @@
 import api from "@flatfile/api";
 
 export default function (listener) {
-  listener.filter({ job: "space:configure" }, (configure) => {
-    configure.on(
-      "job:ready",
-      async ({ context: { spaceId, environmentId, jobId } }) => {
+  listener.on('job:ready',
+      { job: 'space:configure' },
+      async (event) => {
+        const { context: { spaceId, environmentId, jobId } } = event
         try {
           await api.jobs.ack(jobId, {
             info: "Gettin started.",
             progress: 10,
           });
+
+          await api.secrets.upsert({name: 'secret-name', value: '$ecr3tV@lue', environmentId, spaceId})
 
           await api.workbooks.create({
             spaceId,
@@ -77,33 +79,40 @@ export default function (listener) {
         }
       }
     );
-  });
 
-  listener.filter({ job: "workbook:submitAction" }, (configure) => {
-    configure.on("job:ready", async ({ context: { jobId } }) => {
-      try {
-        await api.jobs.ack(jobId, {
-          info: "Gettin started.",
-          progress: 10,
-        });
+  listener.on('job:ready',
+  {job: 'workbook:submitAction'},
+      async (event) => {
+        const { context: { jobId, environmentId, spaceId } } = event
+          try {
+            await api.jobs.ack(jobId, {
+              info: "Gettin started.",
+              progress: 10,
+            });
 
-        //make changes after cells in a Sheet have been updated
-        console.log("make changes here when an action is clicked");
+            //make changes after cells in a Sheet have been updated
+            console.log("make changes here when an action is clicked");
 
-        await api.jobs.complete(jobId, {
-          outcome: {
-            message: "This job is now complete.",
-          },
-        });
-      } catch (error) {
-        console.error("Error:", error.stack);
+            console.log(await event.secrets('secret-name'))
+            const secrets = await api.secrets.list({environmentId, spaceId})
+            const forDeletion = secrets.data.find(secret => secret.name === 'secret-name')
+            await api.secrets.delete(forDeletion.id)
+            console.log(await api.secrets.list({environmentId, spaceId}))
+            await api.jobs.complete(jobId, {
+              outcome: {
+                message: "This job is now complete.",
+              },
+            });
+          } catch (error) {
+            console.error("Error:", error.stack);
 
-        await api.jobs.fail(jobId, {
-          outcome: {
-            message: "This job encountered an error.",
-          },
-        });
-      }
+            await api.jobs.fail(jobId, {
+              outcome: {
+                message: "This job encountered an error.",
+              },
+            });
+          }
     });
-  });
 }
+
+
