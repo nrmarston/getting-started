@@ -41,17 +41,17 @@ export default function (listener) {
                 slug: "products",
                 fields: [
                   {
-                    key: "id",
+                    key: "product_id",
                     type: "string",
                     label: "Product ID",
                   },
                   {
-                    key: "name",
+                    key: "product_name",
                     type: "string",
                     label: "Name",
                   },
                   {
-                    key: "description",
+                    key: "product_description",
                     type: "string",
                     label: "Description",
                   },
@@ -126,22 +126,22 @@ export default function (listener) {
 
     // Part 3: Transform and validate (https://flatfile.com/docs/apps/custom/add-data-transformation)
     nikfiles.use(
-      recordHook("contacts", (record) => {
+      recordHook("products", (record) => {
         // Validate and transform a Record's first name
-        const value = record.get("firstName");
+        const value = record.get("product_name");
         if (typeof value === "string") {
-          record.set("firstName", value.toLowerCase());
+          record.set("product_name", value.toUpperCase());
         } else {
-          record.addError("firstName", "Invalid first name");
+          record.addError("product_name", "Invalid product name");
         }
 
-        // Validate a Record's email address
-        const email = record.get("email");
-        const validEmailAddress = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!validEmailAddress.test(email)) {
-          console.log("Invalid email address");
-          record.addError("email", "Invalid email address");
-        }
+        // // Validate a Record's email address
+        // const email = record.get("email");
+        // const validEmailAddress = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        // if (!validEmailAddress.test(email)) {
+        //   console.log("Invalid email address");
+        //   record.addError("email", "Invalid email address");
+        // }
 
         return record;
       })
