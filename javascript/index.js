@@ -9,8 +9,8 @@ import api from "@flatfile/api";
 import { recordHook } from "@flatfile/plugin-record-hook";
 
 // TODO: Update this with your webhook.site URL for Part 4
-const webhookReceiver = "https://webhook.site/1234";
-
+const webhookReceiver =
+  "https://webhook.site/5f98ba02-ba4b-4ad5-a9f4-90ad85cf5ba3";
 export default function (listener) {
   // Part 1: Setup a listener (https://flatfile.com/docs/apps/custom/meet-the-listener)
   listener.on("**", (event) => {
@@ -150,24 +150,13 @@ export default function (listener) {
 
     // Part 3: Transform and validate (https://flatfile.com/docs/apps/custom/add-data-transformation)
     nikfiles.use(
-      recordHook("output", (record) => {
-        // Validate and transform a Record's date field
-        const moment = require("moment");
-        const date = record.get("date");
-
-        function convertToUTC(dateString) {
-          const formats = ["MM/DD/YYYY", "DD/MM/YYYY"];
-          const utcDate = moment(dateString, formats, true).utc().toISOString();
-          return utcDate;
-        }
-
-        if (typeof date === "string") {
-          record.set("date", convertToUTC(date));
+      recordHook("ouput", (record) => {
+        const product = record.get("product_id");
+        if (typeof product === "string") {
+          record.set("product_id", product.toUpperCase());
         } else {
-          record.addError("date", "Please enter a valid date here");
+          record.addError("product_id", "Please enter a product ID");
         }
-
-        return record;
       })
     );
 
