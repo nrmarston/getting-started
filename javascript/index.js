@@ -18,9 +18,9 @@ export default function (listener) {
     console.log(`Received event: ${event.topic}`);
   });
 
-  listener.namespace(["space:red"], (red) => {
+  listener.namespace(["space:nikfiles"], (nikfiles) => {
     // Part 2: Configure a Space (https://flatfile.com/docs/apps/custom)
-    red.on(
+    nikfiles.on(
       "job:ready",
       { job: "space:configure" },
       async ({ context: { spaceId, environmentId, jobId } }) => {
@@ -37,23 +37,33 @@ export default function (listener) {
             labels: ["pinned"],
             sheets: [
               {
-                name: "Contacts",
-                slug: "contacts",
+                name: "Products",
+                slug: "products",
                 fields: [
                   {
-                    key: "firstName",
+                    key: "id",
                     type: "string",
-                    label: "First Name",
+                    label: "Product ID",
                   },
                   {
-                    key: "lastName",
+                    key: "name",
                     type: "string",
-                    label: "Last Name",
+                    label: "Name",
                   },
                   {
-                    key: "email",
+                    key: "description",
                     type: "string",
-                    label: "Email",
+                    label: "Description",
+                  },
+                  {
+                    key: "product_group_id",
+                    type: "string",
+                    label: "Product Group ID",
+                  },
+                  {
+                    key: "product_type",
+                    type: "string",
+                    label: "Product Type",
                   },
                 ],
               },
@@ -62,7 +72,7 @@ export default function (listener) {
               {
                 operation: "submitAction",
                 mode: "foreground",
-                label: "Submit foreground",
+                label: "Submit Data",
                 description: "Submit data to webhook.site",
                 primary: true,
               },
@@ -83,10 +93,10 @@ export default function (listener) {
             metadata: {
               theme: {
                 root: {
-                  primaryColor: "red",
+                  primaryColor: "green",
                 },
                 sidebar: {
-                  backgroundColor: "red",
+                  backgroundColor: "green",
                   textColor: "white",
                   activeTextColor: "midnightblue",
                 },
@@ -115,7 +125,7 @@ export default function (listener) {
     );
 
     // Part 3: Transform and validate (https://flatfile.com/docs/apps/custom/add-data-transformation)
-    red.use(
+    nikfiles.use(
       recordHook("contacts", (record) => {
         // Validate and transform a Record's first name
         const value = record.get("firstName");
@@ -138,60 +148,64 @@ export default function (listener) {
     );
 
     // Part 4: Configure a submit Action (https://flatfile.com/docs/apps/custom/submit-action)
-    red.on("job:ready", { job: "workbook:submitAction" }, async (event) => {
-      const { payload } = event;
-      const { jobId, workbookId } = event.context;
+    nikfiles.on(
+      "job:ready",
+      { job: "workbook:submitAction" },
+      async (event) => {
+        const { payload } = event;
+        const { jobId, workbookId } = event.context;
 
-      // Acknowledge the job
-      try {
-        await api.jobs.ack(jobId, {
-          info: "Starting job to submit action to webhook.site",
-          progress: 10,
-        });
+        // Acknowledge the job
+        try {
+          await api.jobs.ack(jobId, {
+            info: "Starting job to submit action to webhook.site",
+            progress: 10,
+          });
 
-        // Collect all Sheet and Record data from the Workbook
-        const { data: sheets } = await api.sheets.list({ workbookId });
-        const records = {};
-        for (const [index, element] of sheets.entries()) {
-          records[`Sheet[${index}]`] = await api.records.get(element.id);
+          // Collect all Sheet and Record data from the Workbook
+          const { data: sheets } = await api.sheets.list({ workbookId });
+          const records = {};
+          for (const [index, element] of sheets.entries()) {
+            records[`Sheet[${index}]`] = await api.records.get(element.id);
+          }
+
+          console.log(JSON.stringify(records, null, 2));
+
+          // Send the data to our webhook.site URL
+          const response = await fetch(webhookReceiver, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              ...payload,
+              method: "fetch",
+              sheets,
+              records,
+            }),
+          });
+
+          // If the call fails throw an error
+          if (response.status !== 200) {
+            throw new Error("Failed to submit data to webhook.site");
+          }
+
+          // Otherwise, complete the job
+          await api.jobs.complete(jobId, {
+            outcome: {
+              message: `Data was successfully submitted to Webhook.site. Go check it out at ${webhookReceiver}.`,
+            },
+          });
+        } catch (error) {
+          // If an error is thrown, fail the job
+          console.log(`webhook.site[error]: ${JSON.stringify(error, null, 2)}`);
+          await api.jobs.fail(jobId, {
+            outcome: {
+              message: `This job failed. Check your ${webhookReceiver}.`,
+            },
+          });
         }
-
-        console.log(JSON.stringify(records, null, 2));
-
-        // Send the data to our webhook.site URL
-        const response = await fetch(webhookReceiver, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ...payload,
-            method: "fetch",
-            sheets,
-            records,
-          }),
-        });
-
-        // If the call fails throw an error
-        if (response.status !== 200) {
-          throw new Error("Failed to submit data to webhook.site");
-        }
-
-        // Otherwise, complete the job
-        await api.jobs.complete(jobId, {
-          outcome: {
-            message: `Data was successfully submitted to Webhook.site. Go check it out at ${webhookReceiver}.`,
-          },
-        });
-      } catch (error) {
-        // If an error is thrown, fail the job
-        console.log(`webhook.site[error]: ${JSON.stringify(error, null, 2)}`);
-        await api.jobs.fail(jobId, {
-          outcome: {
-            message: `This job failed. Check your ${webhookReceiver}.`,
-          },
-        });
       }
-    });
+    );
   });
 }
