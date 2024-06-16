@@ -37,33 +37,58 @@ export default function (listener) {
             labels: ["pinned"],
             sheets: [
               {
-                name: "Products",
-                slug: "products",
+                name: "Desired Output",
+                slug: "ouput",
                 fields: [
-                  {
-                    key: "product_id",
-                    type: "string",
-                    label: "Product ID",
-                  },
-                  {
-                    key: "product_name",
-                    type: "string",
-                    label: "Name",
-                  },
-                  {
-                    key: "product_description",
-                    type: "string",
-                    label: "Description",
-                  },
-                  {
-                    key: "product_group_id",
-                    type: "string",
-                    label: "Product Group ID",
-                  },
                   {
                     key: "product_type",
                     type: "string",
                     label: "Product Type",
+                  },
+                  {
+                    key: "product_group",
+                    type: "string",
+                    label: "Product Group",
+                  },
+                  {
+                    key: "product_id",
+                    type: "string",
+                    label: "Product",
+                  },
+                  {
+                    key: "ship_to_city",
+                    type: "string",
+                    label: "Ship to City",
+                  },
+                  {
+                    key: "customer_branch",
+                    type: "string",
+                    label: "Customer Branch",
+                  },
+                  {
+                    key: "channel",
+                    type: "string",
+                    label: "Channel",
+                  },
+                  {
+                    key: "date",
+                    type: "string",
+                    label: "Date",
+                  },
+                  {
+                    key: "quantity_sold",
+                    type: "number",
+                    label: "Quantity Sold",
+                  },
+                  {
+                    key: "time_bucket",
+                    type: "string",
+                    label: "Time Bucket",
+                  },
+                  {
+                    key: "revenue",
+                    type: "number",
+                    label: "Revenue",
                   },
                 ],
               },
@@ -93,12 +118,11 @@ export default function (listener) {
             metadata: {
               theme: {
                 root: {
-                  primaryColor: "green",
+                  primaryColor: "black",
                 },
                 sidebar: {
-                  backgroundColor: "green",
+                  backgroundColor: "#202020",
                   textColor: "white",
-                  activeTextColor: "midnightblue",
                 },
                 // See reference for all possible variables
               },
@@ -126,22 +150,22 @@ export default function (listener) {
 
     // Part 3: Transform and validate (https://flatfile.com/docs/apps/custom/add-data-transformation)
     nikfiles.use(
-      recordHook("products", (record) => {
-        // Validate and transform a Record's first name
-        const value = record.get("product_name");
-        if (typeof value === "string") {
-          record.set("product_name", value.toUpperCase());
-        } else {
-          record.addError("product_name", "Invalid product name");
+      recordHook("output", (record) => {
+        // Validate and transform a Record's date field
+        const moment = require("moment");
+        const date = record.get("date");
+
+        function convertToUTC(dateString) {
+          const formats = ["MM/DD/YYYY", "DD/MM/YYYY"];
+          const utcDate = moment(dateString, formats, true).utc().toISOString();
+          return utcDate;
         }
 
-        // // Validate a Record's email address
-        // const email = record.get("email");
-        // const validEmailAddress = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        // if (!validEmailAddress.test(email)) {
-        //   console.log("Invalid email address");
-        //   record.addError("email", "Invalid email address");
-        // }
+        if (typeof date === "string") {
+          record.set("date", convertToUTC(date));
+        } else {
+          record.addError("date", "Please enter a valid date here");
+        }
 
         return record;
       })

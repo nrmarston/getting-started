@@ -20,7 +20,8 @@
     "@flatfile/api": "latest",
     "@flatfile/listener": "latest",
     "@flatfile/plugin-record-hook": "latest",
-    "flatfile": "latest"
+    "flatfile": "latest",
+    "moment": "^2.30.1"
   },
   "devDependencies": {
     "@types/node": "^18.16.0"
